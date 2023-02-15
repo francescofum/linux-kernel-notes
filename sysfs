@@ -1,0 +1,51 @@
+1. Create variables that will hold data we want to expose e.g 
+int error_counter = 0;
+
+2. Write protypes for store/show functions used to write/read to the variable from a sysfs file 
+/*************** Sysfs functions **********************/
+static ssize_t  sysfs_show(struct kobject *kobj, 
+                        struct kobj_attribute *attr, char *buf);
+static ssize_t  sysfs_store(struct kobject *kobj, 
+                        struct kobj_attribute *attr,const char *buf, size_t count);
+                        
+3. Create the attribute, there are other ways of creating group attributes TODO: look into them 
+struct kobj_attribute etx_attr = __ATTR(etx_value, 0660, sysfs_show, sysfs_store);
+
+4. Write the definitions of the sysfs functions declared above 
+/*
+** This function will be called when we read the sysfs file
+*/
+static ssize_t sysfs_show(struct kobject *kobj, 
+                struct kobj_attribute *attr, char *buf)
+{
+        pr_info("Sysfs - Read!!!\n");
+        return sprintf(buf, "%d", etx_value);
+}
+/*
+** This function will be called when we write the sysfsfs file
+*/
+static ssize_t sysfs_store(struct kobject *kobj, 
+                struct kobj_attribute *attr,const char *buf, size_t count)
+{
+        pr_info("Sysfs - Write!!!\n");
+        sscanf(buf,"%d",&etx_value);
+        return count;
+}
+
+5. Create a directory in the sysfs where the variables will live, this should be in the __init function 
+/*Creating a directory in /sys/kernel/ */
+kobj_ref = kobject_create_and_add("etx_sysfs",kernel_kobj);
+ 
+/*Creating sysfs file for etx_value*/
+if(sysfs_create_file(kobj_ref,&etx_attr.attr)){
+pr_err("Cannot create sysfs file......\n");
+goto r_sysfs;
+}
+
+r_sysfs:
+        kobject_put(kobj_ref); 
+        sysfs_remove_file(kernel_kobj, &etx_attr.attr);
+  
+6. in the __exit function you need to destroy and remove the file 
+kobject_put(kobj_ref); /*kobject_put will free the structure */
+sysfs_remove_file(kernel_kobj, &etx_attr.attr);
